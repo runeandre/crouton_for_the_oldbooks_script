@@ -1,0 +1,89 @@
+#!/bin/bash
+
+### About ###
+# Created to get crouton working on my "Samsung Chromebook 2 (XE503C32 - Peach Pi)" with "Chrome OS 75.0.3770.144 (2019)".
+# Requires: Linux (or MacOS?), bash, git, make (build-utils) and python3 (http.server)
+
+COMMIT="ae59434" # Last 2022 commit
+# Skip the '.git' in the URL
+SOURCE="https://github.com/dnschneid/crouton"
+IP_ADDRESS="$(hostname -I)"
+PORT="8080"
+
+echo "Source: ${SOURCE}"
+echo "IP Address: ${IP_ADDRESS}"
+echo "Port: ${PORT}"
+
+### Clone crouton if doesn't exists
+if [ ! -d 'crouton' ]; then
+   echo "Directory 'crouton' doesn't exist."
+   git clone "${SOURCE}.git"
+fi
+
+
+### Open the crouton folder
+cd crouton
+
+### Reset to latest version
+git pull
+git reset --hard HEAD
+
+#############################
+### Compatibility options ###
+#############################
+
+# You only need to use one of these options.
+
+### Option 1: Revert bootstrap to older version (in "installer/ubuntu/bootstrap")
+find . -not -path '*/\.git/*' -exec sed -i 's,1.0.140_bpo12+1,1.0.128+nmu2,gI' '{}' \;
+# Ref 1: https://github.com/dnschneid/crouton/commit/4c6d9e23ca23ad3d17e4d7647eebe7374e7e975d
+# Ref 2: https://github.com/dnschneid/crouton/commit/9594f5b84093908b9063cdeb32027a7cc0cf1359
+
+### Option 2: Reset crouton to older commit
+# git reset --hard ${COMMIT}
+
+#############################
+#############################
+#############################
+
+
+### Replace "github.com/dnschneid" with your IP Address
+find . -not -path "*/\.git/*" -exec sed -i "s,${SOURCE},http://${IP_ADDRESS}:${PORT},gI" "{}" \;
+
+
+### Build everything
+make
+
+
+### Create folders "raw/releases"
+mkdir raw
+mkdir raw/releases
+
+
+### Copy crouton to "raw/releases"
+cp crouton raw/releases
+
+
+### Instructions
+echo " "
+echo "####################"
+echo "### Instructions ###"
+echo "####################"
+echo " "
+echo "1. Boot the Chromebook with developer mode enabled (Google how to do this)."
+echo "2. Open a shell: Ctrl+Alt+T -> Type 'shell' and press enter."
+echo "3. Open the home folder: 'cd'"
+echo "4. Open the Downloads folder: 'cd Downloads'"
+echo "5. Download crouton to the Chromebook: 'curl http://${IP_ADDRESS}:${PORT}/crouton --output crouton'"
+echo "6. Copy crouton to bin folder: 'sudo install -Dt /usr/local/bin -m 755 crouton'"
+echo "7. Install Ubuntu 20.04 (Focal) with XFCE: 'sudo crouton -t xfce -r focal'"
+echo "8. Start Ubuntu: 'sudo startxfce4'"
+echo " "
+echo "List Linux versions: 'crouton -r list'"
+echo "Delete all installed Linux: 'sudo delete-chroot -a'"
+echo " "
+echo "####################"
+
+
+### Start web server from the crouton folder
+python3 -m http.server ${PORT} --bind ${IP_ADDRESS}
